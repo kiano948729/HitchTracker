@@ -3,7 +3,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
 type Place = { name: string; lat: number; lon: number }
-type Route = { distanceMeters: number; durationSeconds: number; coordinates: [number, number][] }
+type Route = { distanceMeters: number; durationSeconds: number; coordinates: [number, number][]; prijs: number }
 
 async function geocode(q: string): Promise<Place> {
   const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`)
@@ -12,6 +12,8 @@ async function geocode(q: string): Promise<Place> {
   if (!results.length) throw new Error(`No results for "${q}"`)
   return results[0]
 }
+
+const euro = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' })
 
 function formatDuration(s: number) {
   const m = Math.round(s / 60)
@@ -27,6 +29,7 @@ export default function App() {
   const [to, setTo] = useState('')
   const [fromCoords, setFromCoords] = useState<Place | null>(null)
   const [info, setInfo] = useState('')
+  const [prijs, setPrijs] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -59,6 +62,7 @@ export default function App() {
     e.preventDefault()
     setError('')
     setInfo('')
+    setPrijs(null)
     setBusy(true)
     try {
       const a = fromCoords && from === 'My location' ? fromCoords : await geocode(from)
@@ -74,6 +78,7 @@ export default function App() {
       L.marker([b.lat, b.lon]).addTo(layer.current!).bindPopup('Destination')
       const line = L.polyline(route.coordinates, { weight: 5 }).addTo(layer.current!)
       map.current!.fitBounds(line.getBounds(), { padding: [40, 40] })
+      setPrijs(route.prijs)
       setInfo(`${(route.distanceMeters / 1000).toFixed(1)} km · ${formatDuration(route.durationSeconds)}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -103,6 +108,7 @@ export default function App() {
         <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="To" required />
         <button type="submit" disabled={busy}>{busy ? 'Routing…' : 'Get route'}</button>
         {info && <strong>{info}</strong>}
+        {prijs !== null && <strong>Verwachte prijs: {euro.format(prijs)}</strong>}
         {error && <span style={{ color: '#c00' }}>{error}</span>}
       </form>
     </div>

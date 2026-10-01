@@ -37,4 +37,11 @@ public class Rit
     public Gebruiker Gebruiker { get; set; } = null!;
 
     public Chauffeur Chauffeur { get; set; } = null!;
+
+    /// <summary>Prijs = starttarief + tarief per km * afstand. Slaat het resultaat op in Prijs.</summary>
+    public decimal BerekenPrijs(decimal startTarief, decimal tariefPerKm)
+    {
+        Prijs = Math.Round(startTarief + tariefPerKm * AfstandKm, 2, MidpointRounding.AwayFromZero);
+        return Prijs;
+    }
 }

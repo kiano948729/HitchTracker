@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using backend.Data;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -55,8 +56,8 @@ app.MapGet("/api/geocode", async (string q, IHttpClientFactory http) =>
     return Results.Ok(results);
 });
 
-// GET /api/route?fromLat=..&fromLon=..&toLat=..&toLon=..  ->  { distanceMeters, durationSeconds, coordinates: [[lat, lon], ...] }
-app.MapGet("/api/route", async (double fromLat, double fromLon, double toLat, double toLon, IHttpClientFactory http) =>
+// GET /api/route?fromLat=..&fromLon=..&toLat=..&toLon=..  ->  { distanceMeters, durationSeconds, coordinates: [[lat, lon], ...], prijs }
+app.MapGet("/api/route", async (double fromLat, double fromLon, double toLat, double toLon, IHttpClientFactory http, IConfiguration config) =>
 {
     var client = http.CreateClient("osrm");
     var inv = CultureInfo.InvariantCulture;
@@ -74,13 +75,22 @@ app.MapGet("/api/route", async (double fromLat, double fromLon, double toLat, do
     var coords = route.GetProperty("geometry").GetProperty("coordinates").EnumerateArray()
         .Select(c => new[] { c[1].GetDouble(), c[0].GetDouble() })
         .ToArray();
+    var distance = route.GetProperty("distance").GetDouble();
+
+    // Prijs = starttarief + tarief per km (vaste tarieven uit config).
+    var rit = new Rit { AfstandKm = (decimal)Math.Round(distance / 1000, 2) };
+    var prijs = rit.BerekenPrijs(
+        config.GetValue<decimal>("Pricing:StartTarief"),
+        config.GetValue<decimal>("Pricing:TariefPerKm"));
+
     return Results.Ok(new RouteResult(
-        route.GetProperty("distance").GetDouble(),
+        distance,
         route.GetProperty("duration").GetDouble(),
-        coords));
+        coords,
+        prijs));
 });
 
 app.Run();
 
 record GeocodeResult(string Name, double Lat, double Lon);
-record RouteResult(double DistanceMeters, double DurationSeconds, double[][] Coordinates);
+record RouteResult(double DistanceMeters, double DurationSeconds, double[][] Coordinates, decimal Prijs);
