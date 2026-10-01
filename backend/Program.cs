@@ -1,8 +1,5 @@
 using System.Globalization;
 using System.Text.Json;
-
-var builder = WebApplication.CreateBuilder(args);
-
 using backend.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,6 +34,8 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+app.MapControllers();
 
 // GET /api/geocode?q=Amsterdam  ->  [{ name, lat, lon }]
 app.MapGet("/api/geocode", async (string q, IHttpClientFactory http) =>
@@ -85,8 +84,3 @@ app.Run();
 
 record GeocodeResult(string Name, double Lat, double Lon);
 record RouteResult(double DistanceMeters, double DurationSeconds, double[][] Coordinates);
-app.UseHttpsRedirection();
-
-app.MapControllers();
-
-app.Run();
