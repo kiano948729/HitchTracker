@@ -1,0 +1,53 @@
+/* Zwevend paneel boven de kaart: routeformulier en boekflow. */
+.paneel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  width: 320px;
+  box-sizing: border-box;
+  padding: 12px;
+  background: #fff;
+  color: #111;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.paneel form,
+.kaart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kaart h2,
+.kaart p {
+  margin: 0;
+}
+
+.kaart h2 {
+  font-size: 1.1rem;
+}
+
+.taxis {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.taxis li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.melding {
+  color: #8a5a00;
+}
+
+.fout {
+  color: #c00;
+}
