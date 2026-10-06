@@ -1,10 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
-
-var builder = WebApplication.CreateBuilder(args);
-
 using backend.Data;
 using Microsoft.EntityFrameworkCore;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +11,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")
     ));
+
 
 // Services
 builder.Services.AddControllers();
@@ -81,12 +80,13 @@ app.MapGet("/api/route", async (double fromLat, double fromLon, double toLat, do
         coords));
 });
 
-app.Run();
-
-record GeocodeResult(string Name, double Lat, double Lon);
-record RouteResult(double DistanceMeters, double DurationSeconds, double[][] Coordinates);
 app.UseHttpsRedirection();
 
 app.MapControllers();
 
 app.Run();
+
+record GeocodeResult(string Name, double Lat, double Lon);
+record RouteResult(double DistanceMeters, double DurationSeconds, double[][] Coordinates);
+
+
