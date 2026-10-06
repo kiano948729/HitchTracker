@@ -90,3 +90,4 @@ record GeocodeResult(string Name, double Lat, double Lon);
 record RouteResult(double DistanceMeters, double DurationSeconds, double[][] Coordinates);
 
 
+app.Run();
