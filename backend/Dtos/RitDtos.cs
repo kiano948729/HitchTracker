@@ -9,9 +9,6 @@ public class BoekTaxiRequest
     public int? GebruikerId { get; set; }
 
     [Required]
-    public int? ChauffeurId { get; set; }
-
-    [Required]
     [MaxLength(255)]
     public string VertrekPunt { get; set; } = string.Empty;
 

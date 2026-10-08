@@ -137,7 +137,7 @@ export default function App() {
             />
             <button type="submit" disabled={busy}>{busy ? 'Routing…' : 'Get route'}</button>
             {info && <strong>{info}</strong>}
-            {aanvraag && <button type="button" onClick={() => setBoeken(true)}>Kies een taxi</button>}
+            {aanvraag && <button type="button" onClick={() => setBoeken(true)}>Boek een taxi</button>}
             {error && <span className="fout">{error}</span>}
           </form>
         )}

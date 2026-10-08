@@ -1,9 +1,3 @@
-export type Taxi = {
-  chauffeurId: number
-  naam: string
-  beoordeling: number
-}
-
 export type RitStatus = 'Aangevraagd' | 'Geaccepteerd' | 'Geweigerd'
 
 export type Rit = {
@@ -36,16 +30,13 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json()
 }
 
-export const getBeschikbareTaxis = () => request<Taxi[]>('/api/taxis/beschikbaar')
-
-// Reiziger.boekTaxi(). De prijs wordt door de server uit de afstand berekend.
-export const boekTaxi = (aanvraag: Aanvraag, chauffeurId: number) =>
+// Reiziger.boekTaxi(). De server wijst de chauffeur toe en berekent de prijs uit de afstand.
+export const boekTaxi = (aanvraag: Aanvraag) =>
   request<Rit>('/api/ritten', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       gebruikerId: aanvraag.gebruikerId,
-      chauffeurId,
       vertrekPunt: aanvraag.vertrekPunt,
       bestemming: aanvraag.bestemming,
       afstandKm: aanvraag.afstandKm,

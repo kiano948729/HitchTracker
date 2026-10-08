@@ -14,21 +14,21 @@ public class RittenController : ControllerBase
 
     public RittenController(AppDbContext db) => _db = db;
 
-    // Reiziger.boekTaxi(): maakt een rit met status "Aangevraagd" voor de gekozen chauffeur.
+    // Reiziger.boekTaxi(): maakt een rit met status "Aangevraagd" en wijst automatisch
+    // de best beoordeelde beschikbare chauffeur toe.
     [HttpPost]
     public async Task<ActionResult<RitDto>> Boek(BoekTaxiRequest request)
     {
         if (!await _db.Gebruikers.AnyAsync(g => g.GebruikerId == request.GebruikerId))
             return NotFound(new { fout = "Reiziger niet gevonden." });
 
-        var chauffeur = await _db.Chauffeurs.FindAsync(request.ChauffeurId);
+        var chauffeur = await _db.Chauffeurs
+            .Where(c => !c.Ritten.Any(r => RitStatus.Actief.Contains(r.Status)))
+            .OrderByDescending(c => c.beoordeling)
+            .ThenBy(c => c.Naam)
+            .FirstOrDefaultAsync();
         if (chauffeur is null)
-            return NotFound(new { fout = "Chauffeur niet gevonden." });
-
-        var bezet = await _db.Ritten.AnyAsync(r =>
-            r.ChauffeurId == chauffeur.ChauffeurId && RitStatus.Actief.Contains(r.Status));
-        if (bezet)
-            return Conflict(new { fout = "Deze taxi is niet meer beschikbaar." });
+            return Conflict(new { fout = "Er zijn op dit moment geen taxi's beschikbaar." });
 
         var rit = new Rit
         {
