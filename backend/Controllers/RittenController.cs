@@ -14,8 +14,9 @@ public class RittenController : ControllerBase
 
     public RittenController(AppDbContext db) => _db = db;
 
-    // Reiziger.boekTaxi(): maakt een rit met status "Aangevraagd" en wijst automatisch
-    // de best beoordeelde beschikbare chauffeur toe.
+    // Reiziger.boekTaxi(): maakt een rit met status "Aangevraagd" en wijst automatisch een chauffeur toe:
+    // eerst wie het minste actieve ritten heeft (vrije chauffeurs gaan voor), dan de beste beoordeling.
+    // Er is dus altijd een taxi beschikbaar zolang er chauffeurs bestaan.
     [HttpPost]
     public async Task<ActionResult<RitDto>> Boek(BoekTaxiRequest request)
     {
@@ -23,12 +24,12 @@ public class RittenController : ControllerBase
             return NotFound(new { fout = "Reiziger niet gevonden." });
 
         var chauffeur = await _db.Chauffeurs
-            .Where(c => !c.Ritten.Any(r => RitStatus.Actief.Contains(r.Status)))
-            .OrderByDescending(c => c.beoordeling)
+            .OrderBy(c => c.Ritten.Count(r => RitStatus.Actief.Contains(r.Status)))
+            .ThenByDescending(c => c.beoordeling)
             .ThenBy(c => c.Naam)
             .FirstOrDefaultAsync();
         if (chauffeur is null)
-            return Conflict(new { fout = "Er zijn op dit moment geen taxi's beschikbaar." });
+            return Conflict(new { fout = "Er zijn geen chauffeurs geregistreerd." });
 
         var rit = new Rit
         {

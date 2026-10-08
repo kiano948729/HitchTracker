@@ -85,7 +85,9 @@ app.MapGet("/api/route", async (double fromLat, double fromLon, double toLat, do
         distanceMeters,
         route.GetProperty("duration").GetDouble(),
         coords,
-        Tarief.Bereken((decimal)distanceMeters / 1000m)));
+        Tarief.Bereken((decimal)distanceMeters / 1000m),
+        Tarief.Starttarief,
+        Tarief.PrijsPerKm));
 });
 
 app.UseHttpsRedirection();
@@ -95,4 +97,4 @@ app.MapControllers();
 app.Run();
 
 record GeocodeResult(string Name, double Lat, double Lon);
-record RouteResult(double DistanceMeters, double DurationSeconds, double[][] Coordinates, decimal Price);
+record RouteResult(double DistanceMeters, double DurationSeconds, double[][] Coordinates, decimal Price, decimal StartTariff, decimal PricePerKm);

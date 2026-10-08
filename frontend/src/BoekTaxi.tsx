@@ -4,11 +4,21 @@ import type { Aanvraag, Rit } from './api'
 
 type Props = {
   aanvraag: Aanvraag
+  simulatie: { voortgang: number; resterend: string; prijs: number } | null
+  simSnelheid: number
+  onSimuleer: () => void
   onKlaar: () => void
   onAnnuleer: () => void
 }
 
-export default function BoekTaxi({ aanvraag, onKlaar, onAnnuleer }: Props) {
+export default function BoekTaxi({
+  aanvraag,
+  simulatie,
+  simSnelheid,
+  onSimuleer,
+  onKlaar,
+  onAnnuleer,
+}: Props) {
   const [rit, setRit] = useState<Rit | null>(null)
   const [fout, setFout] = useState<string | null>(null)
   const [bezig, setBezig] = useState(false)
@@ -31,6 +41,21 @@ export default function BoekTaxi({ aanvraag, onKlaar, onAnnuleer }: Props) {
         <p>
           {rit.chauffeurNaam} komt je ophalen voor de rit van {rit.vertrekPunt} naar {rit.bestemming}.
         </p>
+        {simulatie ? (
+          <>
+            <progress value={simulatie.voortgang} max={1} />
+            <p>
+              {simulatie.voortgang >= 1 ? 'Rit afgerond.' : `Onderweg · nog ${simulatie.resterend}`}
+            </p>
+            <p>
+              {simulatie.voortgang >= 1 ? 'Eindprijs' : 'Actuele prijs'}: €{simulatie.prijs.toFixed(2)}
+            </p>
+          </>
+        ) : (
+          <button type="button" onClick={onSimuleer}>
+            Simuleer rit ({simSnelheid}x)
+          </button>
+        )}
         <button type="button" onClick={onKlaar}>
           Nieuwe rit
         </button>

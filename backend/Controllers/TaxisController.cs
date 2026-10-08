@@ -14,13 +14,13 @@ public class TaxisController : ControllerBase
 
     public TaxisController(AppDbContext db) => _db = db;
 
-    // Een taxi is beschikbaar zolang de chauffeur geen openstaande of geaccepteerde rit heeft.
+    // Alle chauffeurs blijven beschikbaar; chauffeurs zonder actieve rit staan bovenaan.
     [HttpGet("beschikbaar")]
     public async Task<ActionResult<List<TaxiDto>>> GetBeschikbaar()
     {
         var taxis = await _db.Chauffeurs
-            .Where(c => !c.Ritten.Any(r => RitStatus.Actief.Contains(r.Status)))
-            .OrderByDescending(c => c.beoordeling)
+            .OrderBy(c => c.Ritten.Count(r => RitStatus.Actief.Contains(r.Status)))
+            .ThenByDescending(c => c.beoordeling)
             .ThenBy(c => c.Naam)
             .Select(c => new TaxiDto(c.ChauffeurId, c.Naam, c.beoordeling))
             .ToListAsync();
