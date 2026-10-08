@@ -1,226 +1,267 @@
-import { useEffect, useRef, useState } from 'react'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { FormEvent } from 'react'
 import './App.css'
-import type { Aanvraag } from './api'
-import BoekTaxi from './BoekTaxi'
-
-type Place = { name: string; lat: number; lon: number }
-type Route = {
-  distanceMeters: number
-  durationSeconds: number
-  coordinates: [number, number][]
-  price: number
-  startTariff: number
-  pricePerKm: number
-}
+import { annuleerRit, boekTaxi, geocode, getRoute, rondRitAf } from './api'
+import type { Plaats, Punt, Rit, RouteInfo } from './api'
+import { STAPPEN, Stap1, Stap2, Stap3, Stap4, Stap5 } from './Stappen'
 
 // Er is nog geen inlog: boekingen lopen via de demo-reiziger uit de seed-data.
 const DEMO_GEBRUIKER_ID = 1
 
-// Nominatim-namen zijn erg lang ("Station, straat, wijk, stad, provincie, postcode, ..."):
-// bewaar alleen de eerste twee delen (en blijf onder de 255 tekens van Rit.VertrekPunt/Bestemming).
-const korten = (naam: string) =>
-  naam.split(',').slice(0, 2).join(',').trim().slice(0, 255)
-
-async function geocode(q: string): Promise<Place> {
-  const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`)
-  if (!res.ok) throw new Error('Geocoding failed')
-  const results: Place[] = await res.json()
-  if (!results.length) throw new Error(`No results for "${q}"`)
-  return results[0]
-}
-
-function formatDuration(s: number) {
-  const m = Math.round(s / 60)
-  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`
-}
-
-// Leaflet zoekt zijn marker-afbeeldingen relatief aan de CSS, wat met Vite niet werkt.
-L.Icon.Default.mergeOptions({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-})
-
-type Simulatie = { voortgang: number; resterend: string; prijs: number }
-
-const ROUTE_STIJL = { weight: 5, color: '#3388ff', opacity: 1, dashArray: undefined }
-const RESTEREND_STIJL = { weight: 5, color: '#777', opacity: 0.8, dashArray: '8 10' }
-const AFGELEGD_STIJL = { weight: 5, color: '#3388ff', opacity: 1 }
-
 // De gesimuleerde rit duurt de echte reistijd gedeeld door deze factor.
 const SIM_SPEED = 30
 
+const MIJN_LOCATIE = 'Mijn locatie'
+
+// Nominatim-namen zijn erg lang ("Station, straat, wijk, stad, provincie, postcode, ..."):
+// bewaar alleen de eerste twee delen (en blijf onder de 255 tekens van Rit.VertrekPunt/Bestemming).
+const korten = (naam: string) => naam.split(',').slice(0, 2).join(',').trim().slice(0, 255)
+
+const naarPunt = (p: Plaats | null): Punt | null => (p ? [p.lat, p.lon] : null)
+
+const foutTekst = (e: unknown) => (e instanceof Error ? e.message : 'Er ging iets mis')
+
 export default function App() {
-  const mapEl = useRef<HTMLDivElement>(null)
-  const map = useRef<L.Map | null>(null)
-  const layer = useRef<L.LayerGroup | null>(null)
-  const routeRef = useRef<Route | null>(null)
-  const simFrame = useRef<number | null>(null)
-  const [sim, setSim] = useState<Simulatie | null>(null)
-  const routeLijn = useRef<L.Polyline | null>(null)
-  const afgelegdeLijn = useRef<L.Polyline | null>(null)
+  const [stap, setStap] = useState(1)
+  const [van, setVan] = useState('')
+  const [naar, setNaar] = useState('')
+  const [eigenLocatie, setEigenLocatie] = useState<Plaats | null>(null)
+  const [vanPlaats, setVanPlaats] = useState<Plaats | null>(null)
+  const [naarPlaats, setNaarPlaats] = useState<Plaats | null>(null)
+  const [route, setRoute] = useState<RouteInfo | null>(null)
+  const [rit, setRit] = useState<Rit | null>(null)
+  const [voortgang, setVoortgang] = useState(0)
+  const [bezig, setBezig] = useState(false)
+  const [fout, setFout] = useState('')
 
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [fromCoords, setFromCoords] = useState<Place | null>(null)
-  const [info, setInfo] = useState('')
-  const [aanvraag, setAanvraag] = useState<Aanvraag | null>(null)
-  const [boeken, setBoeken] = useState(false)
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
+  const cache = useRef(new Map<string, Plaats>())
+  // Echte milliseconden die de simulatie heeft gelopen; blijft staan tijdens pauze.
+  const verstreken = useRef(0)
 
+  const startPunt = useMemo(() => naarPunt(vanPlaats), [vanPlaats])
+  const eindPunt = useMemo(() => naarPunt(naarPlaats), [naarPlaats])
+
+  async function zoek(q: string) {
+    const sleutel = q.trim().toLowerCase()
+    const bekend = cache.current.get(sleutel)
+    if (bekend) return bekend
+    const plaats = await geocode(q)
+    cache.current.set(sleutel, plaats)
+    return plaats
+  }
+
+  // Stap 1: toon de ingevoerde plaatsen op de minikaart (met vertraging, om Nominatim te sparen).
   useEffect(() => {
-    const m = L.map(mapEl.current!).setView([52.37, 4.9], 6)
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(m)
-    layer.current = L.layerGroup().addTo(m)
-    map.current = m
+    if (stap !== 1) return
+    let actief = true
+    const timer = setTimeout(() => {
+      const bepaal = (tekst: string, eigen?: Plaats | null) =>
+        eigen && tekst === MIJN_LOCATIE
+          ? Promise.resolve(eigen)
+          : tekst.trim()
+            ? zoek(tekst).catch(() => null)
+            : Promise.resolve(null)
+      bepaal(van, eigenLocatie).then((p) => actief && setVanPlaats(p))
+      bepaal(naar).then((p) => actief && setNaarPlaats(p))
+    }, 900)
     return () => {
-      if (simFrame.current !== null) cancelAnimationFrame(simFrame.current)
-      m.remove()
+      actief = false
+      clearTimeout(timer)
     }
-  }, [])
+  }, [stap, van, naar, eigenLocatie])
 
-  function stopSim() {
-    if (simFrame.current !== null) cancelAnimationFrame(simFrame.current)
-    simFrame.current = null
-    afgelegdeLijn.current?.remove()
-    afgelegdeLijn.current = null
-    routeLijn.current?.setStyle(ROUTE_STIJL)
-    setSim(null)
-  }
-
-  // Simuleert de rit SIM_SPEED keer sneller dan de echte reistijd: het afgelegde deel
-  // wordt een doorgetrokken lijn, het resterende deel blijft stippellijn.
-  function startSim() {
-    const route = routeRef.current
-    if (!route || route.coordinates.length < 2) return
-    stopSim()
-
-    const pts = route.coordinates
-    const cum = [0]
-    for (let i = 1; i < pts.length; i++) {
-      cum.push(cum[i - 1] + L.latLng(pts[i - 1]).distanceTo(L.latLng(pts[i])))
-    }
-    const totaal = cum[cum.length - 1]
-    const duurMs = (route.durationSeconds * 1000) / SIM_SPEED
-
-    routeLijn.current?.setStyle(RESTEREND_STIJL)
-    const afgelegdeDeel = L.polyline([pts[0]], AFGELEGD_STIJL).addTo(layer.current!)
-    afgelegdeLijn.current = afgelegdeDeel
-
-    const t0 = performance.now()
-    let seg = 1
-    const tick = (nu: number) => {
-      const f = Math.min(1, (nu - t0) / duurMs)
-      const afgelegd = f * totaal
-      while (seg < cum.length - 1 && cum[seg] < afgelegd) seg++
-      const u = Math.min(1, Math.max(0, (afgelegd - cum[seg - 1]) / (cum[seg] - cum[seg - 1] || 1)))
-      const a = pts[seg - 1]
-      const b = pts[seg]
-      afgelegdeDeel.setLatLngs([...pts.slice(0, seg), [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]])
-      // Actuele prijs: starttarief + tarief per afgelegde km; aan het eind de definitieve prijs.
-      const prijs = f >= 1 ? route.price : route.startTariff + route.pricePerKm * (afgelegd / 1000)
-      setSim({ voortgang: f, resterend: formatDuration(route.durationSeconds * (1 - f)), prijs })
-      simFrame.current = f < 1 ? requestAnimationFrame(tick) : null
-    }
-    simFrame.current = requestAnimationFrame(tick)
-  }
-
-  function useMyLocation() {
-    setError('')
+  function gebruikEigenLocatie() {
+    setFout('')
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const p = { name: 'My location', lat: pos.coords.latitude, lon: pos.coords.longitude }
-        setFromCoords(p)
-        setFrom('My location')
+        setEigenLocatie({ name: MIJN_LOCATIE, lat: pos.coords.latitude, lon: pos.coords.longitude })
+        setVan(MIJN_LOCATIE)
       },
-      () => setError('Could not get your location'),
+      () => setFout('Kon je locatie niet ophalen'),
     )
   }
 
-  async function go(e: React.FormEvent) {
+  async function plan(e: FormEvent) {
     e.preventDefault()
-    setError('')
-    setInfo('')
-    setAanvraag(null)
-    stopSim()
-    setBusy(true)
+    setFout('')
+    setBezig(true)
     try {
-      const a = fromCoords && from === 'My location' ? fromCoords : await geocode(from)
-      const b = await geocode(to)
-      const res = await fetch(
-        `/api/route?fromLat=${a.lat}&fromLon=${a.lon}&toLat=${b.lat}&toLon=${b.lon}`,
-      )
-      if (!res.ok) throw new Error('No route found')
-      const route: Route = await res.json()
-
-      routeRef.current = route
-      layer.current!.clearLayers()
-      L.marker([a.lat, a.lon]).addTo(layer.current!).bindPopup('Start')
-      L.marker([b.lat, b.lon]).addTo(layer.current!).bindPopup('Destination')
-      const line = L.polyline(route.coordinates, ROUTE_STIJL).addTo(layer.current!)
-      routeLijn.current = line
-      map.current!.fitBounds(line.getBounds(), { padding: [40, 40] })
-      setInfo(
-        `${(route.distanceMeters / 1000).toFixed(1)} km · ${formatDuration(route.durationSeconds)} · €${route.price.toFixed(2)}`,
-      )
-      setAanvraag({
-        gebruikerId: DEMO_GEBRUIKER_ID,
-        vertrekPunt: korten(a.name),
-        bestemming: korten(b.name),
-        afstandKm: Number((route.distanceMeters / 1000).toFixed(2)),
-        prijs: route.price,
-      })
+      const a = van === MIJN_LOCATIE && eigenLocatie ? eigenLocatie : await zoek(van)
+      const b = await zoek(naar)
+      const r = await getRoute(a, b)
+      setVanPlaats(a)
+      setNaarPlaats(b)
+      setRoute(r)
+      setStap(2)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setFout(foutTekst(err))
     } finally {
-      setBusy(false)
+      setBezig(false)
     }
   }
 
+  async function boek() {
+    if (!route || !vanPlaats || !naarPlaats) return
+    setFout('')
+    setBezig(true)
+    try {
+      const nieuweRit = await boekTaxi({
+        gebruikerId: DEMO_GEBRUIKER_ID,
+        vertrekPunt: korten(vanPlaats.name),
+        bestemming: korten(naarPlaats.name),
+        afstandKm: Number((route.distanceMeters / 1000).toFixed(2)),
+        prijs: route.price,
+      })
+      verstreken.current = 0
+      setVoortgang(0)
+      setRit(nieuweRit)
+      setStap(3)
+    } catch (err) {
+      setFout(foutTekst(err))
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  // Stap 3: de gesimuleerde rit loopt zolang we op dit scherm zijn; pauzeren = stap verlaten.
+  useEffect(() => {
+    if (stap !== 3 || !route || !rit) return
+    const duurMs = (route.durationSeconds * 1000) / SIM_SPEED
+    let laatste = performance.now()
+    let frame = 0
+    const tick = (nu: number) => {
+      verstreken.current += Math.max(0, nu - laatste)
+      laatste = nu
+      const f = Math.min(1, verstreken.current / duurMs)
+      setVoortgang(f)
+      if (f < 1) {
+        frame = requestAnimationFrame(tick)
+      } else {
+        rondRitAf(rit.ritId)
+          .then(setRit)
+          .catch(() => {})
+          .finally(() => setStap(5))
+      }
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [stap, route, rit])
+
+  async function annuleer() {
+    if (!route || !rit) return
+    if (!window.confirm('Weet je zeker dat je de rit wilt annuleren? Je betaalt alleen het gereden deel.')) return
+    setFout('')
+    setBezig(true)
+    try {
+      const km = Number(((route.distanceMeters / 1000) * voortgang).toFixed(2))
+      setRit(await annuleerRit(rit.ritId, km))
+      setStap(5)
+    } catch (err) {
+      setFout(foutTekst(err))
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  function nieuweRit() {
+    setStap(1)
+    setVan('')
+    setNaar('')
+    setEigenLocatie(null)
+    setVanPlaats(null)
+    setNaarPlaats(null)
+    setRoute(null)
+    setRit(null)
+    setVoortgang(0)
+    setFout('')
+    verstreken.current = 0
+  }
+
+  const heeftRoute = route && startPunt && eindPunt
+
   return (
-    <div style={{ height: '100%', position: 'relative' }}>
-      <div ref={mapEl} style={{ height: '100%' }} />
-      <div className="paneel">
-        {boeken && aanvraag ? (
-          <BoekTaxi
-            aanvraag={aanvraag}
-            simulatie={sim}
-            simSnelheid={SIM_SPEED}
-            onSimuleer={startSim}
-            onKlaar={() => { stopSim(); setBoeken(false) }}
-            onAnnuleer={() => setBoeken(false)}
+    <div className="app">
+      <header>
+        <h1>HitchTracker</h1>
+        <ol className="stappen">
+          {STAPPEN.map((naam, i) => (
+            <li key={naam} className={i + 1 === stap ? 'actief' : i + 1 < stap ? 'klaar' : ''}>
+              <span>{i + 1}</span> {naam}
+            </li>
+          ))}
+        </ol>
+      </header>
+      <main>
+        {stap === 1 && (
+          <Stap1
+            van={van}
+            naar={naar}
+            start={startPunt}
+            eind={eindPunt}
+            bezig={bezig}
+            fout={fout}
+            onVan={(w) => {
+              setVan(w)
+              setEigenLocatie(null)
+            }}
+            onNaar={setNaar}
+            onEigenLocatie={gebruikEigenLocatie}
+            onSubmit={plan}
           />
-        ) : (
-          <form onSubmit={go}>
-            <input
-              value={from}
-              onChange={(e) => { setFrom(e.target.value); setFromCoords(null); setAanvraag(null) }}
-              placeholder="From (address or place)"
-              required
-            />
-            <button type="button" onClick={useMyLocation}>Use my current location</button>
-            <input
-              value={to}
-              onChange={(e) => { setTo(e.target.value); setAanvraag(null) }}
-              placeholder="To"
-              required
-            />
-            <button type="submit" disabled={busy}>{busy ? 'Routing…' : 'Get route'}</button>
-            {info && <strong>{info}</strong>}
-            {aanvraag && <button type="button" onClick={() => setBoeken(true)}>Boek een taxi</button>}
-            {error && <span className="fout">{error}</span>}
-          </form>
         )}
-      </div>
+        {stap === 2 && heeftRoute && (
+          <Stap2
+            vertrekPunt={vanPlaats!.name}
+            bestemming={naarPlaats!.name}
+            start={startPunt}
+            eind={eindPunt}
+            route={route}
+            bezig={bezig}
+            fout={fout}
+            onBoek={boek}
+            onTerug={() => {
+              setFout('')
+              setStap(1)
+            }}
+          />
+        )}
+        {stap === 3 && heeftRoute && rit && (
+          <Stap3
+            rit={rit}
+            route={route}
+            start={startPunt}
+            eind={eindPunt}
+            voortgang={voortgang}
+            onPauzeer={() => setStap(4)}
+          />
+        )}
+        {stap === 4 && heeftRoute && rit && (
+          <Stap4
+            rit={rit}
+            route={route}
+            start={startPunt}
+            eind={eindPunt}
+            voortgang={voortgang}
+            fout={fout}
+            bezig={bezig}
+            onHervat={() => {
+              setFout('')
+              setStap(3)
+            }}
+            onAnnuleer={annuleer}
+          />
+        )}
+        {stap === 5 && heeftRoute && rit && (
+          <Stap5
+            rit={rit}
+            route={route}
+            start={startPunt}
+            eind={eindPunt}
+            voortgang={voortgang}
+            onNieuw={nieuweRit}
+          />
+        )}
+      </main>
     </div>
   )
 }

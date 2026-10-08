@@ -77,6 +77,38 @@ public class RittenController : ControllerBase
     [HttpPut("{id:int}/weigeren")]
     public Task<ActionResult<RitDto>> Weiger(int id) => ZetStatus(id, RitStatus.Geweigerd);
 
+    // Rit is volledig gereden.
+    [HttpPut("{id:int}/afronden")]
+    public async Task<ActionResult<RitDto>> Rond(int id)
+    {
+        var rit = await _db.Ritten.Include(r => r.Chauffeur).FirstOrDefaultAsync(r => r.RitId == id);
+        if (rit is null)
+            return NotFound();
+        if (!RitStatus.Actief.Contains(rit.Status))
+            return Conflict(new { fout = $"Rit heeft status '{rit.Status}' en kan niet worden afgerond." });
+
+        rit.Status = RitStatus.Afgerond;
+        await _db.SaveChangesAsync();
+        return RitDto.Van(rit);
+    }
+
+    // Rit is onderweg afgebroken: de reiziger betaalt alleen de tot dan toe gereden afstand.
+    [HttpPut("{id:int}/annuleren")]
+    public async Task<ActionResult<RitDto>> Annuleer(int id, [FromQuery] decimal afstandKm = 0)
+    {
+        var rit = await _db.Ritten.Include(r => r.Chauffeur).FirstOrDefaultAsync(r => r.RitId == id);
+        if (rit is null)
+            return NotFound();
+        if (!RitStatus.Actief.Contains(rit.Status))
+            return Conflict(new { fout = $"Rit heeft status '{rit.Status}' en kan niet worden geannuleerd." });
+
+        rit.AfstandKm = Math.Clamp(afstandKm, 0, rit.AfstandKm);
+        rit.Prijs = Tarief.Bereken(rit.AfstandKm);
+        rit.Status = RitStatus.Geannuleerd;
+        await _db.SaveChangesAsync();
+        return RitDto.Van(rit);
+    }
+
     private async Task<ActionResult<RitDto>> ZetStatus(int id, string nieuweStatus)
     {
         var rit = await _db.Ritten.Include(r => r.Chauffeur).FirstOrDefaultAsync(r => r.RitId == id);

@@ -1,53 +1,177 @@
-/* Zwevend paneel boven de kaart: routeformulier en boekflow. */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #f3f4f6;
+  color: #111;
+}
+
+.app header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+}
+
+.app h1 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+/* Stappenbalk */
+.stappen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.stappen li span {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  border-radius: 50%;
+  background: #ddd;
+  color: #555;
+  font-size: 0.75rem;
+}
+
+.stappen .klaar span {
+  background: #3388ff;
+  color: #fff;
+}
+
+.stappen .actief {
+  color: #111;
+  font-weight: 600;
+}
+
+.stappen .actief span {
+  background: #111;
+  color: #fff;
+}
+
+.app main {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Stap 1, 2 en 5: kaart met minikaart */
+.stapkaart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+  max-width: 520px;
+  margin: 16px auto;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.stapkaart h2,
+.paneel h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.stapkaart label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.mini-kaart {
+  height: 220px;
+  border-radius: 6px;
+}
+
+/* Stap 3 en 4: schermvullende kaart met zwevend paneel */
+.volle-kaart {
+  position: relative;
+  height: 100%;
+}
+
+.kaart-vol {
+  height: 100%;
+}
+
 .paneel {
   position: absolute;
   top: 12px;
   left: 12px;
   z-index: 1000;
-  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   box-sizing: border-box;
+  width: 320px;
+  max-width: calc(100% - 24px);
   padding: 12px;
   background: #fff;
-  color: #111;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
-.paneel form,
-.kaart {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.kaart h2,
-.kaart p {
+.paneel p {
   margin: 0;
 }
 
-.kaart h2 {
-  font-size: 1.1rem;
+.paneel progress {
+  width: 100%;
 }
 
-.taxis {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* Gegevens als label/waarde-rijen */
+.gegevens {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 16px;
   margin: 0;
-  padding: 0;
-  list-style: none;
+  font-size: 0.9rem;
 }
 
-.taxis li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.gegevens dt {
+  color: #666;
 }
 
-.melding {
-  color: #8a5a00;
+.gegevens dd {
+  margin: 0;
+  text-align: right;
+}
+
+.gegevens.prijs {
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+}
+
+.gegevens .totaal {
+  color: #111;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+button.secundair {
+  background: #eee;
+}
+
+button.gevaar {
+  background: #c00;
+  color: #fff;
 }
 
 .fout {
+  margin: 0;
   color: #c00;
 }
