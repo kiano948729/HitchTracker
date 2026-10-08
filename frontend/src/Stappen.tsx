@@ -19,9 +19,11 @@ const euro = (bedrag: number) => `€${bedrag.toFixed(2)}`
 
 const kort = (naam: string) => naam.split(',').slice(0, 2).join(',').trim()
 
+const klok = (ms: number) =>
+  new Date(ms).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+
 function aankomstTijd(secondenVanaf: number) {
-  const t = new Date(Date.now() + secondenVanaf * 1000)
-  return t.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+  return klok(Date.now() + secondenVanaf * 1000)
 }
 
 // ---------- Stap 1: bestemming ----------
@@ -154,9 +156,12 @@ type RitScherm = {
   start: Punt
   eind: Punt
   voortgang: number
+  // Tijdstip (ms) waarop de rit begon. De simulatie is versneld, dus tijden in het paneel
+  // worden hiervan afgeleid in plaats van van de echte klok.
+  startTijd: number
 }
 
-function Voortgang({ rit, route, voortgang }: Pick<RitScherm, 'rit' | 'route' | 'voortgang'>) {
+function Voortgang({ rit, route, voortgang, startTijd }: Pick<RitScherm, 'rit' | 'route' | 'voortgang' | 'startTijd'>) {
   const afgelegdKm = (route.distanceMeters / 1000) * voortgang
   const prijs = voortgang >= 1 ? route.price : route.startTariff + route.pricePerKm * afgelegdKm
   return (
@@ -172,8 +177,10 @@ function Voortgang({ rit, route, voortgang }: Pick<RitScherm, 'rit' | 'route' | 
         </dd>
         <dt>Nog</dt>
         <dd>{formatDuur(route.durationSeconds * (1 - voortgang))}</dd>
+        <dt>Tijd nu (gesimuleerd)</dt>
+        <dd>{klok(startTijd + route.durationSeconds * voortgang * 1000)}</dd>
         <dt>Aankomst</dt>
-        <dd>{aankomstTijd(route.durationSeconds * (1 - voortgang))}</dd>
+        <dd>{klok(startTijd + route.durationSeconds * 1000)}</dd>
         <dt className="totaal">Actuele prijs</dt>
         <dd className="totaal">{euro(prijs)}</dd>
       </dl>
@@ -181,13 +188,21 @@ function Voortgang({ rit, route, voortgang }: Pick<RitScherm, 'rit' | 'route' | 
   )
 }
 
-export function Stap3({ rit, route, start, eind, voortgang, onPauzeer }: RitScherm & { onPauzeer: () => void }) {
+export function Stap3({
+  rit,
+  route,
+  start,
+  eind,
+  voortgang,
+  startTijd,
+  onPauzeer,
+}: RitScherm & { onPauzeer: () => void }) {
   return (
     <div className="volle-kaart">
       <Kaart className="kaart-vol" start={start} eind={eind} route={route.coordinates} voortgang={voortgang} />
       <div className="paneel">
         <h2>Rit volgen</h2>
-        <Voortgang rit={rit} route={route} voortgang={voortgang} />
+        <Voortgang rit={rit} route={route} voortgang={voortgang} startTijd={startTijd} />
         <button type="button" className="secundair" onClick={onPauzeer}>
           Pauzeren of annuleren
         </button>
@@ -203,13 +218,24 @@ type Stap4Props = RitScherm & {
   onAnnuleer: () => void
 }
 
-export function Stap4({ rit, route, start, eind, voortgang, fout, bezig, onHervat, onAnnuleer }: Stap4Props) {
+export function Stap4({
+  rit,
+  route,
+  start,
+  eind,
+  voortgang,
+  startTijd,
+  fout,
+  bezig,
+  onHervat,
+  onAnnuleer,
+}: Stap4Props) {
   return (
     <div className="volle-kaart">
       <Kaart className="kaart-vol" start={start} eind={eind} route={route.coordinates} voortgang={voortgang} />
       <div className="paneel">
         <h2>Rit gepauzeerd</h2>
-        <Voortgang rit={rit} route={route} voortgang={voortgang} />
+        <Voortgang rit={rit} route={route} voortgang={voortgang} startTijd={startTijd} />
         {fout && <p className="fout">{fout}</p>}
         <button type="button" disabled={bezig} onClick={onHervat}>
           Rit hervatten

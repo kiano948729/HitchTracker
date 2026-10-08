@@ -31,6 +31,7 @@ export default function App() {
   const [route, setRoute] = useState<RouteInfo | null>(null)
   const [rit, setRit] = useState<Rit | null>(null)
   const [voortgang, setVoortgang] = useState(0)
+  const [startTijd, setStartTijd] = useState(0)
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState('')
 
@@ -114,6 +115,7 @@ export default function App() {
       })
       verstreken.current = 0
       setVoortgang(0)
+      setStartTijd(Date.now())
       setRit(nieuweRit)
       setStap(3)
     } catch (err) {
@@ -233,6 +235,7 @@ export default function App() {
             start={startPunt}
             eind={eindPunt}
             voortgang={voortgang}
+            startTijd={startTijd}
             onPauzeer={() => setStap(4)}
           />
         )}
@@ -243,6 +246,7 @@ export default function App() {
             start={startPunt}
             eind={eindPunt}
             voortgang={voortgang}
+            startTijd={startTijd}
             fout={fout}
             bezig={bezig}
             onHervat={() => {
