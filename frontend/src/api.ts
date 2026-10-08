@@ -51,5 +51,3 @@ export const boekTaxi = (aanvraag: Aanvraag, chauffeurId: number) =>
       afstandKm: aanvraag.afstandKm,
     }),
   })
-
-export const getRit = (ritId: number) => request<Rit>(`/api/ritten/${ritId}`)

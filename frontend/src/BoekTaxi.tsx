@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
-import { boekTaxi, getBeschikbareTaxis, getRit } from './api'
+import { boekTaxi, getBeschikbareTaxis } from './api'
 import type { Aanvraag, Rit, Taxi } from './api'
-
-const POLL_INTERVAL_MS = 2000
 
 type Props = {
   aanvraag: Aanvraag
@@ -12,17 +10,13 @@ type Props = {
 
 export default function BoekTaxi({ aanvraag, onKlaar, onAnnuleer }: Props) {
   const [rit, setRit] = useState<Rit | null>(null)
-  // Chauffeurs die deze aanvraag al hebben geweigerd, zodat ze niet opnieuw getoond worden.
-  const [geweigerd, setGeweigerd] = useState<number[]>([])
-  const [melding, setMelding] = useState<string | null>(null)
 
-  if (rit?.status === 'Geaccepteerd') {
+  if (rit) {
     return (
       <div className="kaart">
-        <h2>Taxi onderweg</h2>
+        <h2>Taxi geboekt</h2>
         <p>
-          {rit.chauffeurNaam} heeft je aanvraag geaccepteerd voor de rit van {rit.vertrekPunt} naar{' '}
-          {rit.bestemming}.
+          {rit.chauffeurNaam} is geboekt voor de rit van {rit.vertrekPunt} naar {rit.bestemming}.
         </p>
         <button type="button" onClick={onKlaar}>
           Nieuwe rit
@@ -31,44 +25,16 @@ export default function BoekTaxi({ aanvraag, onKlaar, onAnnuleer }: Props) {
     )
   }
 
-  if (rit) {
-    return (
-      <WachtOpChauffeur
-        rit={rit}
-        onUpdate={setRit}
-        onGeweigerd={() => {
-          // Terug naar de lijst met taxi's.
-          setGeweigerd((lijst) => [...lijst, rit.chauffeurId])
-          setMelding(`${rit.chauffeurNaam} heeft je aanvraag geweigerd. Kies een andere taxi.`)
-          setRit(null)
-        }}
-      />
-    )
-  }
-
-  return (
-    <TaxiLijst
-      aanvraag={aanvraag}
-      uitgesloten={geweigerd}
-      melding={melding}
-      onAnnuleer={onAnnuleer}
-      onGeboekt={(nieuweRit) => {
-        setMelding(null)
-        setRit(nieuweRit)
-      }}
-    />
-  )
+  return <TaxiLijst aanvraag={aanvraag} onAnnuleer={onAnnuleer} onGeboekt={setRit} />
 }
 
 type TaxiLijstProps = {
   aanvraag: Aanvraag
-  uitgesloten: number[]
-  melding: string | null
   onAnnuleer: () => void
   onGeboekt: (rit: Rit) => void
 }
 
-function TaxiLijst({ aanvraag, uitgesloten, melding, onAnnuleer, onGeboekt }: TaxiLijstProps) {
+function TaxiLijst({ aanvraag, onAnnuleer, onGeboekt }: TaxiLijstProps) {
   const [taxis, setTaxis] = useState<Taxi[] | null>(null)
   const [fout, setFout] = useState<string | null>(null)
   const [bezig, setBezig] = useState(false)
@@ -100,8 +66,6 @@ function TaxiLijst({ aanvraag, uitgesloten, melding, onAnnuleer, onGeboekt }: Ta
       })
   }
 
-  const zichtbaar = taxis?.filter((t) => !uitgesloten.includes(t.chauffeurId))
-
   return (
     <div className="kaart">
       <h2>Kies een taxi</h2>
@@ -109,12 +73,11 @@ function TaxiLijst({ aanvraag, uitgesloten, melding, onAnnuleer, onGeboekt }: Ta
         {aanvraag.vertrekPunt} → {aanvraag.bestemming} · {aanvraag.afstandKm} km · €
         {aanvraag.prijs.toFixed(2)}
       </p>
-      {melding && <p className="melding">{melding}</p>}
       {fout && <p className="fout">{fout}</p>}
-      {!zichtbaar && !fout && <p>Taxi's laden…</p>}
-      {zichtbaar?.length === 0 && <p>Er zijn op dit moment geen taxi's beschikbaar.</p>}
+      {!taxis && !fout && <p>Taxi's laden…</p>}
+      {taxis?.length === 0 && <p>Er zijn op dit moment geen taxi's beschikbaar.</p>}
       <ul className="taxis">
-        {zichtbaar?.map((taxi) => (
+        {taxis?.map((taxi) => (
           <li key={taxi.chauffeurId}>
             <span>
               {taxi.naam} · ★ {taxi.beoordeling.toFixed(2)}
@@ -128,38 +91,6 @@ function TaxiLijst({ aanvraag, uitgesloten, melding, onAnnuleer, onGeboekt }: Ta
       <button type="button" disabled={bezig} onClick={onAnnuleer}>
         Terug
       </button>
-    </div>
-  )
-}
-
-type WachtProps = {
-  rit: Rit
-  onUpdate: (rit: Rit) => void
-  onGeweigerd: () => void
-}
-
-function WachtOpChauffeur({ rit, onUpdate, onGeweigerd }: WachtProps) {
-  useEffect(() => {
-    let actief = true
-    const timer = setInterval(() => {
-      getRit(rit.ritId)
-        .then((bijgewerkt) => {
-          if (!actief || bijgewerkt.status === 'Aangevraagd') return
-          if (bijgewerkt.status === 'Geweigerd') onGeweigerd()
-          else onUpdate(bijgewerkt)
-        })
-        .catch(() => {})
-    }, POLL_INTERVAL_MS)
-    return () => {
-      actief = false
-      clearInterval(timer)
-    }
-  }, [rit.ritId, onUpdate, onGeweigerd])
-
-  return (
-    <div className="kaart">
-      <h2>Aanvraag verstuurd</h2>
-      <p>Wachten tot {rit.chauffeurNaam} je aanvraag accepteert…</p>
     </div>
   )
 }
