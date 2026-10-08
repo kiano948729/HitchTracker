@@ -21,6 +21,12 @@
   font-size: 1.2rem;
 }
 
+.app main {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 /* Stappenbalk */
 .stappen {
   display: flex;
@@ -33,11 +39,17 @@
   color: #888;
 }
 
-.stappen li span {
+.stappen li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stappen .nr {
   display: inline-block;
-  width: 20px;
-  height: 20px;
-  line-height: 20px;
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
   text-align: center;
   border-radius: 50%;
   background: #ddd;
@@ -45,7 +57,7 @@
   font-size: 0.75rem;
 }
 
-.stappen .klaar span {
+.stappen .klaar .nr {
   background: #3388ff;
   color: #fff;
 }
@@ -55,35 +67,26 @@
   font-weight: 600;
 }
 
-.stappen .actief span {
+.stappen .actief .nr {
   background: #111;
   color: #fff;
 }
 
-.app main {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
-
-/* Stap 1, 2 en 5: kaart met minikaart */
+/* Stap 1, 2 en 5: kaart met minikaart. Mobiel: onder elkaar. */
 .stapkaart {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   box-sizing: border-box;
-  max-width: 520px;
-  margin: 16px auto;
+  margin: 0;
   padding: 16px;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
 
 .stapkaart h2,
 .paneel h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
 }
 
 .stapkaart label {
@@ -93,9 +96,15 @@
   font-size: 0.9rem;
 }
 
+.zijkant {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .mini-kaart {
-  height: 220px;
-  border-radius: 6px;
+  height: 240px;
+  border-radius: 8px;
 }
 
 /* Stap 3 en 4: schermvullende kaart met zwevend paneel */
@@ -115,14 +124,14 @@
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   box-sizing: border-box;
-  width: 320px;
+  width: 340px;
   max-width: calc(100% - 24px);
-  padding: 12px;
+  padding: 14px;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
 .paneel p {
@@ -131,15 +140,16 @@
 
 .paneel progress {
   width: 100%;
+  height: 10px;
 }
 
 /* Gegevens als label/waarde-rijen */
 .gegevens {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 4px 16px;
+  gap: 6px 16px;
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .gegevens dt {
@@ -152,26 +162,104 @@
 }
 
 .gegevens.prijs {
-  padding-top: 8px;
+  padding-top: 10px;
   border-top: 1px solid #eee;
 }
 
 .gegevens .totaal {
   color: #111;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.05rem;
 }
 
 button.secundair {
-  background: #eee;
+  background: #e5e7eb;
+  color: #111;
 }
 
 button.gevaar {
   background: #c00;
-  color: #fff;
 }
 
 .fout {
   margin: 0;
   color: #c00;
+}
+
+/* Laptop / groot scherm: kaart groot links, gegevens rechts. */
+@media (min-width: 900px) {
+  .app header {
+    padding: 12px 32px;
+  }
+
+  .stapkaart {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 16px 32px;
+    width: calc(100% - 64px);
+    max-width: 1300px;
+    margin: 24px auto;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  }
+
+  .stapkaart h2 {
+    grid-column: 1 / -1;
+    font-size: 1.4rem;
+  }
+
+  .stapkaart .mini-kaart {
+    grid-column: 1;
+    height: clamp(380px, 62vh, 700px);
+  }
+
+  .stapkaart .zijkant {
+    grid-column: 2;
+    align-self: start;
+  }
+
+  .paneel {
+    top: 20px;
+    left: 20px;
+    width: 380px;
+  }
+}
+
+/* Mobiel: compacte stappenbalk, paneel van de rit als blad onderaan. */
+@media (max-width: 700px) {
+  .app header {
+    padding: 8px 12px;
+  }
+
+  .stappen {
+    gap: 4px 8px;
+  }
+
+  .stappen li:not(.actief) .naam {
+    display: none;
+  }
+
+  .stapkaart {
+    min-height: 100%;
+    padding: 12px;
+  }
+
+  .mini-kaart {
+    height: 38vh;
+    min-height: 200px;
+  }
+
+  .paneel {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-width: none;
+    max-height: 60%;
+    overflow: auto;
+    border-radius: 14px 14px 0 0;
+  }
 }

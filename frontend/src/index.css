@@ -1,2 +1,37 @@
 html, body, #root { height: 100%; margin: 0; }
 body { font-family: system-ui, 'Segoe UI', Roboto, sans-serif; }
+
+input,
+button {
+  font: inherit;
+  box-sizing: border-box;
+  border-radius: 6px;
+}
+
+input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #bbb;
+  background: #fff;
+  color: #111;
+}
+
+button {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* 16px voorkomt dat mobiele browsers inzoomen op invoervelden */
+@media (max-width: 700px) {
+  input { font-size: 16px; }
+}

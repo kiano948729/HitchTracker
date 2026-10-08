@@ -55,26 +55,28 @@ export function Stap1({
     <form className="stapkaart" onSubmit={onSubmit}>
       <h2>Waar ga je naartoe?</h2>
       <Kaart className="mini-kaart" start={start} eind={eind} />
-      <label>
-        Vertrekpunt
-        <input
-          value={van}
-          onChange={(e) => onVan(e.target.value)}
-          placeholder="Adres of plaats"
-          required
-        />
-      </label>
-      <button type="button" className="secundair" onClick={onEigenLocatie}>
-        Gebruik mijn huidige locatie
-      </button>
-      <label>
-        Bestemming
-        <input value={naar} onChange={(e) => onNaar(e.target.value)} placeholder="Waar naartoe?" required />
-      </label>
-      {fout && <p className="fout">{fout}</p>}
-      <button type="submit" disabled={bezig}>
-        {bezig ? 'Route berekenen…' : 'Prijs berekenen'}
-      </button>
+      <div className="zijkant">
+        <label>
+          Vertrekpunt
+          <input
+            value={van}
+            onChange={(e) => onVan(e.target.value)}
+            placeholder="Adres of plaats"
+            required
+          />
+        </label>
+        <button type="button" className="secundair" onClick={onEigenLocatie}>
+          Gebruik mijn huidige locatie
+        </button>
+        <label>
+          Bestemming
+          <input value={naar} onChange={(e) => onNaar(e.target.value)} placeholder="Waar naartoe?" required />
+        </label>
+        {fout && <p className="fout">{fout}</p>}
+        <button type="submit" disabled={bezig}>
+          {bezig ? 'Route berekenen…' : 'Prijs berekenen'}
+        </button>
+      </div>
     </form>
   )
 }
@@ -109,35 +111,37 @@ export function Stap2({
     <div className="stapkaart">
       <h2>Prijsschatting</h2>
       <Kaart className="mini-kaart" start={start} eind={eind} route={route.coordinates} />
-      <dl className="gegevens">
-        <dt>Van</dt>
-        <dd>{kort(vertrekPunt)}</dd>
-        <dt>Naar</dt>
-        <dd>{kort(bestemming)}</dd>
-        <dt>Afstand</dt>
-        <dd>{km.toFixed(1)} km</dd>
-        <dt>Reistijd</dt>
-        <dd>{formatDuur(route.durationSeconds)}</dd>
-        <dt>Verwachte aankomst</dt>
-        <dd>{aankomstTijd(route.durationSeconds)}</dd>
-      </dl>
-      <dl className="gegevens prijs">
-        <dt>Starttarief</dt>
-        <dd>{euro(route.startTariff)}</dd>
-        <dt>
-          {km.toFixed(2)} km × {euro(route.pricePerKm)}
-        </dt>
-        <dd>{euro(route.price - route.startTariff)}</dd>
-        <dt className="totaal">Geschatte prijs</dt>
-        <dd className="totaal">{euro(route.price)}</dd>
-      </dl>
-      {fout && <p className="fout">{fout}</p>}
-      <button type="button" disabled={bezig} onClick={onBoek}>
-        {bezig ? 'Boeken…' : 'Boek taxi'}
-      </button>
-      <button type="button" className="secundair" disabled={bezig} onClick={onTerug}>
-        Terug
-      </button>
+      <div className="zijkant">
+        <dl className="gegevens">
+          <dt>Van</dt>
+          <dd>{kort(vertrekPunt)}</dd>
+          <dt>Naar</dt>
+          <dd>{kort(bestemming)}</dd>
+          <dt>Afstand</dt>
+          <dd>{km.toFixed(1)} km</dd>
+          <dt>Reistijd</dt>
+          <dd>{formatDuur(route.durationSeconds)}</dd>
+          <dt>Verwachte aankomst</dt>
+          <dd>{aankomstTijd(route.durationSeconds)}</dd>
+        </dl>
+        <dl className="gegevens prijs">
+          <dt>Starttarief</dt>
+          <dd>{euro(route.startTariff)}</dd>
+          <dt>
+            {km.toFixed(2)} km × {euro(route.pricePerKm)}
+          </dt>
+          <dd>{euro(route.price - route.startTariff)}</dd>
+          <dt className="totaal">Geschatte prijs</dt>
+          <dd className="totaal">{euro(route.price)}</dd>
+        </dl>
+        {fout && <p className="fout">{fout}</p>}
+        <button type="button" disabled={bezig} onClick={onBoek}>
+          {bezig ? 'Boeken…' : 'Boek taxi'}
+        </button>
+        <button type="button" className="secundair" disabled={bezig} onClick={onTerug}>
+          Terug
+        </button>
+      </div>
     </div>
   )
 }
@@ -242,31 +246,33 @@ export function Stap5({ rit, route, start, eind, voortgang, onNieuw }: Stap5Prop
         route={route.coordinates}
         voortgang={geannuleerd ? voortgang : undefined}
       />
-      <dl className="gegevens">
-        <dt>Van</dt>
-        <dd>{kort(rit.vertrekPunt)}</dd>
-        <dt>Naar</dt>
-        <dd>{kort(rit.bestemming)}</dd>
-        <dt>Chauffeur</dt>
-        <dd>{rit.chauffeurNaam}</dd>
-        <dt>{geannuleerd ? 'Gereden afstand' : 'Afstand'}</dt>
-        <dd>{rit.afstandKm.toFixed(2)} km</dd>
-        <dt>{geannuleerd ? 'Gereden tijd' : 'Reistijd'}</dt>
-        <dd>{formatDuur(geannuleerd ? route.durationSeconds * voortgang : route.durationSeconds)}</dd>
-      </dl>
-      <dl className="gegevens prijs">
-        <dt>Starttarief</dt>
-        <dd>{euro(startPrijs)}</dd>
-        <dt>
-          {rit.afstandKm.toFixed(2)} km × {euro(route.pricePerKm)}
-        </dt>
-        <dd>{euro(rit.prijs - startPrijs)}</dd>
-        <dt className="totaal">Totaalprijs</dt>
-        <dd className="totaal">{euro(rit.prijs)}</dd>
-      </dl>
-      <button type="button" onClick={onNieuw}>
-        Nieuwe rit
-      </button>
+      <div className="zijkant">
+        <dl className="gegevens">
+          <dt>Van</dt>
+          <dd>{kort(rit.vertrekPunt)}</dd>
+          <dt>Naar</dt>
+          <dd>{kort(rit.bestemming)}</dd>
+          <dt>Chauffeur</dt>
+          <dd>{rit.chauffeurNaam}</dd>
+          <dt>{geannuleerd ? 'Gereden afstand' : 'Afstand'}</dt>
+          <dd>{rit.afstandKm.toFixed(2)} km</dd>
+          <dt>{geannuleerd ? 'Gereden tijd' : 'Reistijd'}</dt>
+          <dd>{formatDuur(geannuleerd ? route.durationSeconds * voortgang : route.durationSeconds)}</dd>
+        </dl>
+        <dl className="gegevens prijs">
+          <dt>Starttarief</dt>
+          <dd>{euro(startPrijs)}</dd>
+          <dt>
+            {rit.afstandKm.toFixed(2)} km × {euro(route.pricePerKm)}
+          </dt>
+          <dd>{euro(rit.prijs - startPrijs)}</dd>
+          <dt className="totaal">Totaalprijs</dt>
+          <dd className="totaal">{euro(rit.prijs)}</dd>
+        </dl>
+        <button type="button" onClick={onNieuw}>
+          Nieuwe rit
+        </button>
+      </div>
     </div>
   )
 }

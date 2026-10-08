@@ -186,7 +186,8 @@ export default function App() {
         <ol className="stappen">
           {STAPPEN.map((naam, i) => (
             <li key={naam} className={i + 1 === stap ? 'actief' : i + 1 < stap ? 'klaar' : ''}>
-              <span>{i + 1}</span> {naam}
+              <span className="nr">{i + 1}</span>
+              <span className="naam">{naam}</span>
             </li>
           ))}
         </ol>
