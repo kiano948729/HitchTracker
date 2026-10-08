@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using backend.Data;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -35,7 +36,12 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    using var scope = app.Services.CreateScope();
+    await DevSeeder.MigrateEnSeedAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>());
 }
+
+app.MapControllers();
 
 // GET /api/geocode?q=Amsterdam  ->  [{ name, lat, lon }]
 app.MapGet("/api/geocode", async (string q, IHttpClientFactory http) =>
@@ -74,10 +80,12 @@ app.MapGet("/api/route", async (double fromLat, double fromLon, double toLat, do
     var coords = route.GetProperty("geometry").GetProperty("coordinates").EnumerateArray()
         .Select(c => new[] { c[1].GetDouble(), c[0].GetDouble() })
         .ToArray();
+    var distanceMeters = route.GetProperty("distance").GetDouble();
     return Results.Ok(new RouteResult(
-        route.GetProperty("distance").GetDouble(),
+        distanceMeters,
         route.GetProperty("duration").GetDouble(),
-        coords));
+        coords,
+        Tarief.Bereken((decimal)distanceMeters / 1000m)));
 });
 
 app.UseHttpsRedirection();
@@ -87,4 +95,4 @@ app.MapControllers();
 app.Run();
 
 record GeocodeResult(string Name, double Lat, double Lon);
-record RouteResult(double DistanceMeters, double DurationSeconds, double[][] Coordinates);
+record RouteResult(double DistanceMeters, double DurationSeconds, double[][] Coordinates, decimal Price);

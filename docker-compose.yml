@@ -1,10 +1,29 @@
 services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      # Alleen voor lokale ontwikkeling.
+      MSSQL_SA_PASSWORD: "HitchTracker_Dev1!"
+    volumes:
+      - dbdata:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
   backend:
     build: ./backend
     ports:
       - "5165:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=db;Database=HitchTrackerDb;User Id=sa;Password=HitchTracker_Dev1!;TrustServerCertificate=True;"
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
@@ -12,3 +31,6 @@ services:
       - "3000:80"
     depends_on:
       - backend
+
+volumes:
+  dbdata:
